@@ -1401,17 +1401,17 @@ SDL12Compat_GetHintBoolean(const char *name, SDL_bool default_value)
     return (SDL20_atoi(val) != 0) ? SDL_TRUE : SDL_FALSE;
 }
 
-static float
-SDL12Compat_GetHintFloat(const char *name, float default_value)
-{
-    const char *val = SDL12Compat_GetHint(name);
-
-    if (!val) {
-        return default_value;
-    }
-
-    return (float) SDL20_atof(val);
-}
+//static float
+//SDL12Compat_GetHintFloat(const char *name, float default_value)
+//{
+//    const char *val = SDL12Compat_GetHint(name);
+//
+//    if (!val) {
+//        return default_value;
+//    }
+//
+//    return (float) SDL20_atof(val);
+//}
 
 static int
 SDL12Compat_GetHintInt(const char *name, int default_value)
@@ -6017,7 +6017,7 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
     Uint32 fullscreen_flags20 = 0;
     Uint32 appfmt;
     const char *vsync_env = SDL12Compat_GetHint("SDL12COMPAT_SYNC_TO_VBLANK");
-    float window_size_scaling = SDL12Compat_GetHintFloat("SDL12COMPAT_WINDOW_SCALING", 1.0f);
+//    float window_size_scaling = SDL12Compat_GetHintFloat("SDL12COMPAT_WINDOW_SCALING", 1.0f);
     int max_bpp = SDL12Compat_GetHintInt("SDL12COMPAT_MAX_BPP", 32);
     SDL_bool use_gl_scaling = SDL_FALSE;
     SDL_bool use_highdpi = SDL_TRUE;
@@ -6049,10 +6049,11 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
            high-DPI setups properly. (They often use the window size to determine
            the resolution in some or all parts of their code.) Because OpenGL scaling
            is never used for windows, it is always false there. */
-        use_highdpi = (flags12 & SDL12_FULLSCREEN) ? use_gl_scaling : SDL_FALSE;
+        // use_highdpi = (flags12 & SDL12_FULLSCREEN) ? use_gl_scaling : SDL_FALSE;
+        use_highdpi = SDL_FALSE;
     }
 
-    use_highdpi = SDL12Compat_GetHintBoolean("SDL12COMPAT_HIGHDPI", use_highdpi);
+//    use_highdpi = SDL12Compat_GetHintBoolean("SDL12COMPAT_HIGHDPI", use_highdpi);
 
     fix_bordless_fs_win = SDL12Compat_GetHintBoolean("SDL12COMPAT_FIX_BORDERLESS_FS_WIN", fix_bordless_fs_win);
 
@@ -6168,7 +6169,8 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
         if (use_gl_scaling || ((flags12 & SDL12_OPENGL) == 0) || ((dmode.w == width) && (dmode.h == height))) {
             fullscreen_flags20 |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         } else {
-            fullscreen_flags20 |= SDL_WINDOW_FULLSCREEN;
+            //fullscreen_flags20 |= SDL_WINDOW_FULLSCREEN;
+            fullscreen_flags20 |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         }
     } else if (fix_bordless_fs_win && (flags12 & SDL12_NOFRAME) && (width == dmode.w) && (height == dmode.h)) {
         /* app appears to be trying to do a "borderless fullscreen windowed" mode, so just bump
@@ -6180,18 +6182,31 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
     fromwin_env = SDL20_getenv("SDL_WINDOWID");
 
     if (fromwin_env) {
-        window_size_scaling = 1.0f;  /* don't scale for external windows */
-    } else if (window_size_scaling <= 0.0f) {
-        window_size_scaling = 1.0f;  /* bogus value, reset to default */
+        // window_size_scaling = 1.0f;  /* don't scale for external windows */
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
+//    } else if (window_size_scaling <= 0.0f) {
+        // window_size_scaling = 1.0f;  /* bogus value, reset to default */
     } else if (flags12 & SDL12_RESIZABLE) {
-        window_size_scaling = 1.0f;  /* assume that resizable windows are already prepared to handle whatever without scaling. */
+        // window_size_scaling = 1.0f;  /* assume that resizable windows are already prepared to handle whatever without scaling. */
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
+    } else if ((fullscreen_flags20 & SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
     } else if ((fullscreen_flags20 & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0) {
-        window_size_scaling = 1.0f;  /* setting the window to fullscreen or fullscreen_desktop? Don't scale it. */
+        // window_size_scaling = 1.0f;  /* setting the window to fullscreen or fullscreen_desktop? Don't scale it. */
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
     } else if ((flags12 & SDL12_OPENGL) && !use_gl_scaling) {
-        window_size_scaling = 1.0f;  /* OpenGL but not doing GL scaling? Don't allow window size scaling. */
+        // window_size_scaling = 1.0f;  /* OpenGL but not doing GL scaling? Don't allow window size scaling. */
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
     } else {
-        scaled_width = (int) (window_size_scaling * width);
-        scaled_height = (int) (window_size_scaling * height);
+       // scaled_width = (int) (window_size_scaling * width);
+       // scaled_height = (int) (window_size_scaling * height);
+        scaled_width = dmode.w;
+        scaled_height = dmode.h;
     }
 
     if (fromwin_env) {
@@ -6282,7 +6297,7 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
         if (use_gl_scaling) {
             if (!InitializeOpenGLScaling(width, height)) {
                 const SDL_bool was_fullscreen = ((fullscreen_flags20 & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0) ? SDL_TRUE : SDL_FALSE;
-                window_size_scaling = 1.0f;
+                // window_size_scaling = 1.0f;
                 use_gl_scaling = SDL_FALSE;
                 fullscreen_flags20 &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
                 SDL20_SetWindowFullscreen(VideoWindow20, fullscreen_flags20);
@@ -6353,7 +6368,7 @@ SetVideoModeImpl(int width, int height, int bpp, Uint32 flags12)
             return EndVidModeCreate();
         }
 
-        SDL20_RenderSetLogicalSize(VideoRenderer20, width, height);
+        //SDL20_RenderSetLogicalSize(VideoRenderer20, width, height);
 
         /* we need to make sure we're at the back of the Event Watch queue */	
         SDL20_DelEventWatch(EventFilter20to12, NULL);
